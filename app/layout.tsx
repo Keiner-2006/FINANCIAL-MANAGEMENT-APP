@@ -2,6 +2,8 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
+import { ServiceWorkerRegister } from '@/components/sw-register'
+import { InstallPrompt } from '@/components/install-prompt'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -11,7 +13,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Finanzas en Familia',
+  title: 'SmartPocket',
   description:
     'Plataforma de gestión financiera familiar: presupuesto, recibos, vehículos y bolsillo de ahorros.',
   generator: 'v0.app',
@@ -56,6 +58,8 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         {children}
         <Toaster position="top-center" richColors />
+        <ServiceWorkerRegister />
+        <InstallPrompt />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

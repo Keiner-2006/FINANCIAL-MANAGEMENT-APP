@@ -59,7 +59,7 @@ export default function Page() {
             <Wallet className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Finanzas en Familia</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">SmartPocket</h1>
             <p className="text-sm text-muted-foreground">Crea tu cuenta para empezar a organizar tu hogar.</p>
           </div>
         </div>

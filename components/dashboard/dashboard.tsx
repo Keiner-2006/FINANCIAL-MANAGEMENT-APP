@@ -1,16 +1,17 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { Usuario, MetodoPago, DocumentoActivo, Gasto, ObligacionFinanciera } from "@/lib/types"
+import type { Usuario, MetodoPago, DocumentoActivo, Gasto, ObligacionFinanciera, IngresoExtra } from "@/lib/types"
 import { CATEGORIAS } from "@/lib/types"
 import { formatCOP, formatFecha } from "@/lib/format"
 import { getDiasHabiles } from "@/lib/finance"
-import { cerrarSesion, eliminarGasto } from "@/app/dashboard/actions"
+import { cerrarSesion, eliminarGasto, eliminarIngresoExtra } from "@/app/dashboard/actions"
 import { AlertBanner } from "./alert-banner"
 import { AlmuerzosGrid } from "./almuerzos-grid"
 import { GastoDialog } from "./gasto-dialog"
 import { ReciboDialog } from "./recibo-dialog"
 import { CierreCicloDialog } from "./cierre-ciclo-dialog"
+import { IngresoDialog } from "./ingreso-dialog"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
@@ -30,6 +31,7 @@ import {
   TrendingUp,
   CreditCard,
   Receipt,
+  Banknote,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +41,7 @@ interface DashboardProps {
   documentos: DocumentoActivo[]
   gastos: Gasto[]
   obligaciones: ObligacionFinanciera[]
+  ingresosExtra: IngresoExtra[]
   excluidos: string[]
   periodo: { inicioISO: string; finISO: string; label: string }
   almuerzosTotal: number
@@ -50,6 +53,7 @@ type DialogTipo =
   | { kind: "gasto"; categoria: string; titulo: string; descripcion?: string; sub?: any; desc?: boolean }
   | { kind: "recibo" }
   | { kind: "cierre" }
+  | { kind: "ingreso" }
   | null
 
 export function Dashboard({
@@ -58,6 +62,7 @@ export function Dashboard({
   documentos,
   gastos,
   obligaciones,
+  ingresosExtra,
   excluidos,
   periodo,
   almuerzosTotal,
@@ -85,7 +90,9 @@ export function Dashboard({
   // Deudas fijas activas (financiaciones + Brilla)
   const deudasActivas = obligaciones.filter((o) => o.activo)
 
-  const ingreso = Number(usuario.monto_ingreso)
+  const ingresoBase = Number(usuario.monto_ingreso)
+  const ingresosExtras = ingresosExtra.reduce((acc, i) => acc + Number(i.monto), 0)
+  const ingreso = ingresoBase + ingresosExtras
   const balance = ingreso - gastoFlujoTotal
   const excedente = balance
   const pctGastado = ingreso > 0 ? Math.min(100, (gastoFlujoTotal / ingreso) * 100) : 0
@@ -106,6 +113,12 @@ export function Dashboard({
     const res = await eliminarGasto(id)
     if (res?.error) toast.error(res.error)
     else toast.success("Gasto eliminado")
+  }
+
+  const handleEliminarIngreso = async (id: string) => {
+    const res = await eliminarIngresoExtra(id)
+    if (res?.error) toast.error(res.error)
+    else toast.success("Ingreso eliminado")
   }
 
   const abrirGasto = (categoria: string, titulo: string, opts?: { descripcion?: string; sub?: any; desc?: boolean }) =>
@@ -269,6 +282,18 @@ export function Dashboard({
           </div>
         </section>
 
+        {/* Ingreso extra */}
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">Ingresos extra</h2>
+          <div className="grid grid-cols-3 gap-3">
+            <QuickAction
+              icon={<Banknote className="h-5 w-5" />}
+              label="Ingreso extra"
+              onClick={() => setDialog({ kind: "ingreso" })}
+            />
+          </div>
+        </section>
+
         {/* Almuerzos */}
         {usuario.almuerzos_activos && (
           <section className="rounded-2xl border border-border bg-card p-4">
@@ -300,12 +325,35 @@ export function Dashboard({
               {formatCOP(gastosTotales)}
             </span>
           </div>
-          {gastos.length === 0 ? (
+          {gastos.length === 0 && ingresosExtra.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               Aún no hay movimientos en este ciclo.
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-border">
+              {ingresosExtra.map((i) => (
+                <li key={i.id} className="flex items-center gap-3 py-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-600">
+                    <Banknote className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">Ingreso extra</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {formatFecha(i.fecha)}
+                      {i.descripcion ? ` · ${i.descripcion}` : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-green-600">+{formatCOP(Number(i.monto))}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleEliminarIngreso(i.id)}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Eliminar ingreso"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
               {gastos.map((g) => {
                 const cat = CATEGORIAS[g.categoria]
                 return (
@@ -369,6 +417,9 @@ export function Dashboard({
       )}
       {dialog?.kind === "cierre" && (
         <CierreCicloDialog open onOpenChange={(o) => !o && setDialog(null)} excedente={excedente} />
+      )}
+      {dialog?.kind === "ingreso" && (
+        <IngresoDialog open onOpenChange={(o) => !o && setDialog(null)} />
       )}
     </main>
   )

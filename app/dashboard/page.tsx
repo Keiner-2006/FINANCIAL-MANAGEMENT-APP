@@ -2,8 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getPeriodoActual, calcularAlmuerzos, esFechaCierre } from "@/lib/finance"
 import { Dashboard } from "@/components/dashboard/dashboard"
-import { InstallPrompt } from "@/components/install-prompt"
-import type { Gasto, MetodoPago, DocumentoActivo, Usuario, ObligacionFinanciera } from "@/lib/types"
+import type { Gasto, MetodoPago, DocumentoActivo, Usuario, ObligacionFinanciera, IngresoExtra } from "@/lib/types"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -26,6 +25,7 @@ export default async function DashboardPage() {
     { data: gastos },
     { data: excluidosRows },
     { data: obligaciones },
+    { data: ingresosExtraRows },
   ] = await Promise.all([
     supabase.from("metodos_pago").select("*").eq("user_id", user.id).eq("activo", true),
     supabase.from("documentos_activos").select("*").eq("user_id", user.id),
@@ -47,6 +47,13 @@ export default async function DashboardPage() {
       .select("*")
       .eq("user_id", user.id)
       .eq("activo", true),
+    supabase
+      .from("ingresos_extra")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("fecha", periodo.inicioISO)
+      .lte("fecha", periodo.finISO)
+      .order("fecha", { ascending: false }),
   ])
 
   const excluidos = (excluidosRows ?? []).map((r) => r.fecha as string)
@@ -56,13 +63,13 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <InstallPrompt />
       <Dashboard
       usuario={usuario as Usuario}
       metodos={(metodos ?? []) as MetodoPago[]}
       documentos={(documentos ?? []) as DocumentoActivo[]}
       gastos={(gastos ?? []) as Gasto[]}
       obligaciones={(obligaciones ?? []) as ObligacionFinanciera[]}
+      ingresosExtra={(ingresosExtraRows ?? []) as IngresoExtra[]}
       excluidos={excluidos}
       periodo={{
         inicioISO: periodo.inicioISO,

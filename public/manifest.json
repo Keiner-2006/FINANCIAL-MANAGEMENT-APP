@@ -1,6 +1,6 @@
 {
-  "name": "Finanzas en Familia",
-  "short_name": "FinanzasApp",
+  "name": "SmartPocket",
+  "short_name": "SmartPocket",
   "description": "Controla el dinero de tu hogar, sin complicaciones.",
   "start_url": "/",
   "display": "standalone",

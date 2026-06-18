@@ -203,6 +203,33 @@ export async function eliminarGasto(id: string) {
   return { success: true }
 }
 
+export async function registrarIngresoExtra(input: { monto: number; fecha?: string; descripcion?: string | null }) {
+  const { supabase, userId } = await getUserId()
+  if (!userId) return { error: "No autenticado" }
+
+  const { error } = await supabase.from("ingresos_extra").insert({
+    user_id: userId,
+    monto: input.monto,
+    fecha: input.fecha ?? new Date().toISOString().slice(0, 10),
+    descripcion: input.descripcion ?? null,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
+export async function eliminarIngresoExtra(id: string) {
+  const { supabase, userId } = await getUserId()
+  if (!userId) return { error: "No autenticado" }
+
+  const { error } = await supabase.from("ingresos_extra").delete().eq("id", id).eq("user_id", userId)
+  if (error) return { error: error.message }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
 export async function cerrarSesion() {
   const supabase = await createClient()
   await supabase.auth.signOut()

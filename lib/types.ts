@@ -71,6 +71,15 @@ export interface Gasto {
   created_at: string
 }
 
+export interface IngresoExtra {
+  id: string
+  user_id: string
+  monto: number
+  fecha: string
+  descripcion: string | null
+  created_at: string
+}
+
 export interface AlmuerzoExcluido {
   id: string
   user_id: string
