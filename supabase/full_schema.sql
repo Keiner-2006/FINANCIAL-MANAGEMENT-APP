@@ -46,16 +46,32 @@ create table if not exists public.documentos_activos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.usuarios(id) on delete cascade,
   vehiculo text not null,
-  tipo text not null check (tipo in ('soat','tecnomecanica')),
+  tipo text not null check (tipo in ('soat','tecnomecanica','aceite')),
   fecha_vencimiento date not null,
+  fecha_realizacion date,
   created_at timestamptz not null default now()
 );
 
 create index if not exists idx_documentos_user on public.documentos_activos(user_id);
 
+create table if not exists public.vehiculos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  nombre text not null,
+  placa text,
+  tipo text not null check (tipo in ('moto','carro')),
+  modelo text,
+  anio integer check (anio >= 1950 and anio <= 2100),
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_vehiculos_user on public.vehiculos(user_id);
+
 create table if not exists public.gastos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.usuarios(id) on delete cascade,
+  vehiculo_id uuid references public.vehiculos(id) on delete set null,
   categoria text not null,
   subcategoria text,
   monto numeric not null check (monto > 0),
@@ -70,6 +86,7 @@ create table if not exists public.gastos (
 
 create index if not exists idx_gastos_user on public.gastos(user_id);
 create index if not exists idx_gastos_user_fecha on public.gastos(user_id, fecha);
+create index if not exists idx_gastos_vehiculo on public.gastos(vehiculo_id);
 
 create table if not exists public.almuerzos_excluidos (
   id uuid primary key default gen_random_uuid(),
@@ -81,11 +98,28 @@ create table if not exists public.almuerzos_excluidos (
 
 create index if not exists idx_almuerzos_excluidos_user on public.almuerzos_excluidos(user_id);
 
+create table if not exists public.prestamos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  persona text not null,
+  monto numeric not null check (monto > 0),
+  tipo text not null check (tipo in ('prestado', 'deuda')),
+  tasa_interes numeric not null default 0 check (tasa_interes >= 0),
+  fecha_prestamo date not null default current_date,
+  fecha_pago date,
+  pagado boolean not null default false,
+  notas text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_prestamos_user on public.prestamos(user_id);
+
 alter table public.usuarios enable row level security;
 alter table public.metodos_pago enable row level security;
 alter table public.obligaciones_financieras enable row level security;
 alter table public.documentos_activos enable row level security;
 alter table public.gastos enable row level security;
+alter table public.vehiculos enable row level security;
 alter table public.almuerzos_excluidos enable row level security;
 
 create policy "usuarios_select_own" on public.usuarios for select using (auth.uid() = id);
@@ -102,6 +136,14 @@ create policy "obligaciones_insert_own" on public.obligaciones_financieras for i
 create policy "obligaciones_update_own" on public.obligaciones_financieras for update using (auth.uid() = user_id);
 create policy "obligaciones_delete_own" on public.obligaciones_financieras for delete using (auth.uid() = user_id);
 
+create policy "vehiculos_select_own" on public.vehiculos for select using (auth.uid() = user_id);
+create policy "vehiculos_insert_own" on public.vehiculos for insert with check (auth.uid() = user_id);
+create policy "vehiculos_update_own" on public.vehiculos for update using (auth.uid() = user_id);
+create policy "vehiculos_delete_own" on public.vehiculos for delete using (auth.uid() = user_id);
+
+alter table public.documentos_activos add column if not exists vehiculo_id uuid references public.vehiculos(id) on delete cascade;
+alter table public.documentos_activos add column if not exists precio_renovacion numeric check (precio_renovacion >= 0);
+
 create policy "documentos_select_own" on public.documentos_activos for select using (auth.uid() = user_id);
 create policy "documentos_insert_own" on public.documentos_activos for insert with check (auth.uid() = user_id);
 create policy "documentos_update_own" on public.documentos_activos for update using (auth.uid() = user_id);
@@ -115,6 +157,36 @@ create policy "gastos_delete_own" on public.gastos for delete using (auth.uid() 
 create policy "almuerzos_excluidos_select_own" on public.almuerzos_excluidos for select using (auth.uid() = user_id);
 create policy "almuerzos_excluidos_insert_own" on public.almuerzos_excluidos for insert with check (auth.uid() = user_id);
 create policy "almuerzos_excluidos_delete_own" on public.almuerzos_excluidos for delete using (auth.uid() = user_id);
+
+create policy "prestamos_select_own" on public.prestamos for select using (auth.uid() = user_id);
+create policy "prestamos_insert_own" on public.prestamos for insert with check (auth.uid() = user_id);
+create policy "prestamos_update_own" on public.prestamos for update using (auth.uid() = user_id);
+create policy "prestamos_delete_own" on public.prestamos for delete using (auth.uid() = user_id);
+
+create table if not exists public.historial_servicios (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  vehiculo_id uuid not null references public.vehiculos(id) on delete cascade,
+  nombre text not null,
+  monto numeric not null check (monto >= 0),
+  fecha_realizacion date not null,
+  notas text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_historial_servicios_user on public.historial_servicios(user_id);
+create index if not exists idx_historial_servicios_vehiculo on public.historial_servicios(vehiculo_id);
+
+alter table public.historial_servicios enable row level security;
+
+drop policy if exists "historial_servicios_select_own" on public.historial_servicios;
+create policy "historial_servicios_select_own" on public.historial_servicios for select using (auth.uid() = user_id);
+
+drop policy if exists "historial_servicios_insert_own" on public.historial_servicios;
+create policy "historial_servicios_insert_own" on public.historial_servicios for insert with check (auth.uid() = user_id);
+
+drop policy if exists "historial_servicios_delete_own" on public.historial_servicios;
+create policy "historial_servicios_delete_own" on public.historial_servicios for delete using (auth.uid() = user_id);
 
 create or replace function public.handle_new_user()
 returns trigger

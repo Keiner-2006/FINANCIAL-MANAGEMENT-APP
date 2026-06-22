@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import type { DocumentoActivo } from "@/lib/types"
 import { diasHastaVencimiento } from "@/lib/finance"
 import { AlertTriangle } from "lucide-react"
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils"
 const TIPO_LABEL: Record<string, string> = {
   soat: "SOAT",
   tecnomecanica: "Tecnomecánica",
+  aceite: "Aceite",
 }
 
 export function AlertBanner({ documentos }: { documentos: DocumentoActivo[] }) {
@@ -33,11 +35,21 @@ export function AlertBanner({ documentos }: { documentos: DocumentoActivo[] }) {
             )}
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p className="font-medium text-pretty">
-              {vencido
-                ? `Tu ${TIPO_LABEL[doc.tipo]} venció hace ${Math.abs(dias)} día(s). Renuévalo para evitar multas.`
-                : `Tu ${TIPO_LABEL[doc.tipo]} vence en ${dias} día(s). Renuévalo pronto para evitar multas de tránsito.`}
-            </p>
+            <div className="flex-1">
+              <p className="font-medium text-pretty">
+                {vencido
+                  ? `Tu ${TIPO_LABEL[doc.tipo]} venció hace ${Math.abs(dias)} día(s). Renuévalo para evitar multas.`
+                  : `Tu ${TIPO_LABEL[doc.tipo]} vence en ${dias} día(s). Renuévalo pronto para evitar multas de tránsito.`}
+              </p>
+              {doc.vehiculo_id && (
+                <Link
+                  href={`/vehiculos/${doc.vehiculo_id}`}
+                  className="mt-1 inline-block text-xs font-semibold underline underline-offset-2"
+                >
+                  Renovar ahora →
+                </Link>
+              )}
+            </div>
           </div>
         )
       })}

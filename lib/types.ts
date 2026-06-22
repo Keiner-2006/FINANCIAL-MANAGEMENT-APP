@@ -7,7 +7,7 @@ export type TipoMetodoPago =
   | "tarjeta_debito"
   | "bolsillo_nequi"
   | "cuenta_ahorros"
-export type TipoDocumento = "soat" | "tecnomecanica"
+export type TipoDocumento = "soat" | "tecnomecanica" | "aceite"
 
 export interface Usuario {
   id: string
@@ -47,12 +47,38 @@ export interface ObligacionFinanciera {
   created_at: string
 }
 
+export interface Vehiculo {
+  id: string
+  user_id: string
+  nombre: string
+  placa: string | null
+  tipo: TipoVehiculo
+  modelo: string | null
+  anio: number | null
+  activo: boolean
+  created_at: string
+}
+
 export interface DocumentoActivo {
   id: string
   user_id: string
   vehiculo: string
   tipo: TipoDocumento
   fecha_vencimiento: string
+  fecha_realizacion: string | null
+  vehiculo_id: string | null
+  precio_renovacion: number | null
+  created_at: string
+}
+
+export interface HistorialServicio {
+  id: string
+  user_id: string
+  vehiculo_id: string
+  nombre: string
+  monto: number
+  fecha_realizacion: string
+  notas: string | null
   created_at: string
 }
 
@@ -87,6 +113,20 @@ export interface AlmuerzoExcluido {
   created_at: string
 }
 
+export interface Prestamo {
+  id: string
+  user_id: string
+  persona: string
+  monto: number
+  tipo: "prestado" | "deuda"
+  tasa_interes: number
+  fecha_prestamo: string
+  fecha_pago: string | null
+  pagado: boolean
+  notas: string | null
+  created_at: string
+}
+
 // Categorias de gasto
 export const CATEGORIAS: Record<string, { label: string; icon: string }> = {
   mercado_familia: { label: "Mercado Familiar", icon: "ShoppingCart" },
@@ -99,4 +139,7 @@ export const CATEGORIAS: Record<string, { label: string; icon: string }> = {
   transporte_mantenimiento: { label: "Mantenimiento", icon: "Wrench" },
   salidas_disfrutar: { label: "Salidas y Ocio", icon: "PartyPopper" },
   mascotas: { label: "Mascotas", icon: "PawPrint" },
+  servicio_agua: { label: "Servicio de Agua", icon: "Droplets" },
+  servicio_luz: { label: "Servicio de Luz", icon: "Zap" },
+  otro: { label: "Otro", icon: "MoreHorizontal" },
 }
