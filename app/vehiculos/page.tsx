@@ -51,8 +51,14 @@ export default async function VehiculosPage() {
           } else {
             vehiculos = [existente as Vehiculo]
           }
-            tipo: usuario.tipo_vehiculo,
-          })
+        } else {
+          const { data: nuevoVehiculo } = await supabase
+            .from("vehiculos")
+            .insert({
+              user_id: user.id,
+              nombre: usuario.tipo_vehiculo === "moto" ? "Mi moto" : "Mi carro",
+              tipo: usuario.tipo_vehiculo,
+            })
           .select("*")
           .single()
 
