@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { ServiceWorkerRegister } from '@/components/sw-register'
 import { InstallPrompt } from '@/components/install-prompt'
+import { BottomNav } from '@/components/bottom-nav'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -60,6 +61,7 @@ export default function RootLayout({
         <Toaster position="top-center" richColors />
         <ServiceWorkerRegister />
         <InstallPrompt />
+        <BottomNav />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

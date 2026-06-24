@@ -25,11 +25,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const METODOS_OPCIONALES = [
-  { tipo: "tarjeta_credito", label: "Tarjeta de Crédito" },
-  { tipo: "tarjeta_debito", label: "Tarjeta de Débito" },
-  { tipo: "bolsillo_nequi", label: "Bolsillo de Nequi" },
-  { tipo: "cuenta_ahorros", label: "Cuenta de Ahorros tradicional" },
+const METODOS_PAGO = [
+  { tipo: "efectivo", label: "Efectivo", tieneBolsillo: false },
+  { tipo: "nequi", label: "Nequi", tieneBolsillo: true },
+  { tipo: "daviplata", label: "Daviplata", tieneBolsillo: true },
+  { tipo: "bancolombia", label: "Bancolombia", tieneBolsillo: true },
+  { tipo: "tarjeta_credito", label: "Tarjeta de Crédito", tieneBolsillo: false },
+  { tipo: "tarjeta_debito", label: "Tarjeta de Débito", tieneBolsillo: false },
 ]
 
 const TOTAL_PASOS = 5
@@ -45,13 +47,15 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
   const [diaPago, setDiaPago] = useState(30)
 
   // Paso 2
-  const [metodosSel, setMetodosSel] = useState<Record<string, boolean>>({})
+  const [metodosSel, setMetodosSel] = useState<Record<string, boolean>>({ efectivo: true })
   const [metodosNombre, setMetodosNombre] = useState<Record<string, string>>({})
-  const [montoBolsillo, setMontoBolsillo] = useState(0)
+  const [bolsilloActivo, setBolsilloActivo] = useState<Record<string, boolean>>({})
+  const [saldoBolsillo, setSaldoBolsillo] = useState<Record<string, number>>({})
 
   // Paso 3
   const [tieneVehiculo, setTieneVehiculo] = useState(false)
   const [tipoVehiculo, setTipoVehiculo] = useState<"moto" | "carro" | "ninguno">("ninguno")
+  const [placaVehiculo, setPlacaVehiculo] = useState("")
   const [soat, setSoat] = useState("")
   const [tecno, setTecno] = useState("")
 
@@ -73,9 +77,11 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
 
   const handleFinalizar = async () => {
     setGuardando(true)
-    const metodos = METODOS_OPCIONALES.filter((m) => metodosSel[m.tipo]).map((m) => ({
+    const metodos = METODOS_PAGO.filter((m) => metodosSel[m.tipo]).map((m) => ({
       tipo: m.tipo,
       nombre: metodosNombre[m.tipo]?.trim() || m.label,
+      bolsillo: m.tieneBolsillo ? (bolsilloActivo[m.tipo] ?? false) : false,
+      saldo_bolsillo: m.tieneBolsillo ? (saldoBolsillo[m.tipo] ?? 0) : 0,
     }))
 
     const documentos: OnboardingPayload["documentos"] = []
@@ -91,12 +97,15 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
       metodos,
       tiene_vehiculo: tieneVehiculo,
       tipo_vehiculo: tieneVehiculo ? tipoVehiculo : "ninguno",
+      placa_vehiculo: tieneVehiculo ? placaVehiculo : undefined,
       documentos,
       tiene_brilla: tieneBrilla,
       cuota_brilla: cuotaBrilla,
       almuerzos_activos: almuerzosActivos,
       valor_almuerzo_diario: valorAlmuerzo,
-      saldo_ahorros_inicial: metodosSel["bolsillo_nequi"] ? montoBolsillo : 0,
+      saldo_ahorros_inicial: metodos
+        .filter((m) => m.bolsillo && m.saldo_bolsillo > 0)
+        .reduce((acc, m) => acc + m.saldo_bolsillo, 0),
     }
 
     const res = await guardarOnboarding(payload)
@@ -177,18 +186,10 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
             <StepShell
               icon={<CreditCard className="h-5 w-5" />}
               titulo="Métodos de pago"
-              descripcion="Efectivo y Nequi ya están activos. Marca los que también uses."
+              descripcion="¿Qué métodos de pago usas?"
             >
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                  <Check className="h-3 w-3" /> Efectivo
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                  <Check className="h-3 w-3" /> Nequi
-                </span>
-              </div>
               <div className="flex flex-col gap-3">
-                {METODOS_OPCIONALES.map((m) => (
+                {METODOS_PAGO.map((m) => (
                   <div key={m.tipo} className="rounded-xl border border-border p-3">
                     <label className="flex items-center gap-3">
                       <Checkbox
@@ -199,22 +200,27 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
                       />
                       <span className="text-sm font-medium text-foreground">{m.label}</span>
                     </label>
-                    {metodosSel[m.tipo] && m.tipo === "bolsillo_nequi" ? (
+                    {metodosSel[m.tipo] && m.tieneBolsillo && (
                       <div className="mt-3 flex flex-col gap-2">
-                        <Input
-                          placeholder={`Ej: ${m.label} Bancolombia`}
-                          value={metodosNombre[m.tipo] ?? ""}
-                          onChange={(e) => setMetodosNombre((prev) => ({ ...prev, [m.tipo]: e.target.value }))}
-                          className="h-10"
-                        />
-                        <CurrencyInput
-                          value={montoBolsillo}
-                          onChange={setMontoBolsillo}
-                          placeholder="Monto actual en el bolsillo"
-                        />
-                        <p className="text-xs text-muted-foreground">Este saldo se cargará como tu ahorro inicial.</p>
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={!!bolsilloActivo[m.tipo]}
+                            onCheckedChange={(c) =>
+                              setBolsilloActivo((prev) => ({ ...prev, [m.tipo]: c === true }))
+                            }
+                          />
+                          <span className="text-xs text-muted-foreground">¿Tienes ahorro/bolsillo?</span>
+                        </label>
+                        {bolsilloActivo[m.tipo] && (
+                          <CurrencyInput
+                            value={saldoBolsillo[m.tipo] ?? 0}
+                            onChange={(v) => setSaldoBolsillo((prev) => ({ ...prev, [m.tipo]: v }))}
+                            placeholder="Saldo actual en el bolsillo"
+                          />
+                        )}
                       </div>
-                    ) : metodosSel[m.tipo] && (
+                    )}
+                    {metodosSel[m.tipo] && !m.tieneBolsillo && m.tipo !== "efectivo" && (
                       <Input
                         placeholder={`Ej: ${m.label} Bancolombia`}
                         value={metodosNombre[m.tipo] ?? ""}
@@ -264,6 +270,16 @@ export function OnboardingWizard({ nombre }: { nombre: string | null }) {
               </div>
               {tieneVehiculo && (
                 <div className="flex flex-col gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="placa-vehiculo">Placa (opcional)</Label>
+                    <Input
+                      id="placa-vehiculo"
+                      placeholder="ABC 123"
+                      value={placaVehiculo}
+                      onChange={(e) => setPlacaVehiculo(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor="soat">Vencimiento del SOAT</Label>
                     <Input id="soat" type="date" min={new Date().toISOString().split("T")[0]} value={soat} onChange={(e) => setSoat(e.target.value)} className="h-11" />

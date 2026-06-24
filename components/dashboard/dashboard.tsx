@@ -1,17 +1,19 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { Usuario, MetodoPago, DocumentoActivo, Gasto, ObligacionFinanciera, IngresoExtra } from "@/lib/types"
+import type { Usuario, MetodoPago, DocumentoActivo, Gasto, ObligacionFinanciera, IngresoExtra, Prestamo } from "@/lib/types"
 import { CATEGORIAS } from "@/lib/types"
 import { formatCOP, formatFecha } from "@/lib/format"
 import { getDiasHabiles } from "@/lib/finance"
-import { cerrarSesion, eliminarGasto, eliminarIngresoExtra } from "@/app/dashboard/actions"
+import { eliminarGasto, eliminarIngresoExtra } from "@/app/dashboard/actions"
 import { AlertBanner } from "./alert-banner"
 import { AlmuerzosGrid } from "./almuerzos-grid"
 import { GastoDialog } from "./gasto-dialog"
 import { ReciboDialog } from "./recibo-dialog"
 import { CierreCicloDialog } from "./cierre-ciclo-dialog"
 import { IngresoDialog } from "./ingreso-dialog"
+import { PrestamoDialog } from "./prestamo-dialog"
+import { PrestamosSection } from "./prestamos-section"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
@@ -24,6 +26,9 @@ import {
   Fuel,
   PartyPopper,
   PawPrint,
+  MoreHorizontal,
+  Droplets,
+  Zap,
   Plus,
   LogOut,
   Trash2,
@@ -32,6 +37,7 @@ import {
   CreditCard,
   Receipt,
   Banknote,
+  HandCoins,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +48,7 @@ interface DashboardProps {
   gastos: Gasto[]
   obligaciones: ObligacionFinanciera[]
   ingresosExtra: IngresoExtra[]
+  prestamos: Prestamo[]
   excluidos: string[]
   periodo: { inicioISO: string; finISO: string; label: string }
   almuerzosTotal: number
@@ -54,6 +61,7 @@ type DialogTipo =
   | { kind: "recibo" }
   | { kind: "cierre" }
   | { kind: "ingreso" }
+  | { kind: "prestamo" }
   | null
 
 export function Dashboard({
@@ -63,6 +71,7 @@ export function Dashboard({
   gastos,
   obligaciones,
   ingresosExtra,
+  prestamos,
   excluidos,
   periodo,
   almuerzosTotal,
@@ -139,11 +148,7 @@ export function Dashboard({
             <p className="text-xs capitalize text-muted-foreground">{periodo.label}</p>
           </div>
         </div>
-        <form action={cerrarSesion}>
-          <Button variant="ghost" size="icon" type="submit" aria-label="Cerrar sesión">
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </form>
+        <div />
       </header>
 
       <div className="flex flex-col gap-4 p-4">
@@ -260,6 +265,27 @@ export function Dashboard({
                 abrirGasto("mascotas", "Mascotas", { descripcion: "Comida, vacunas o estética.", desc: true })
               }
             />
+            <QuickAction
+              icon={<Droplets className="h-5 w-5" />}
+              label="Agua"
+              onClick={() =>
+                abrirGasto("servicio_agua", "Servicio de Agua", { descripcion: "Factura de agua.", desc: true })
+              }
+            />
+            <QuickAction
+              icon={<Zap className="h-5 w-5" />}
+              label="Luz"
+              onClick={() =>
+                abrirGasto("servicio_luz", "Servicio de Luz", { descripcion: "Factura de luz.", desc: true })
+              }
+            />
+            <QuickAction
+              icon={<MoreHorizontal className="h-5 w-5" />}
+              label="Otro"
+              onClick={() =>
+                abrirGasto("otro", "Otro gasto", { descripcion: "Describe el gasto.", desc: true })
+              }
+            />
             {usuario.tiene_vehiculo && (
               <QuickAction
                 icon={<Fuel className="h-5 w-5" />}
@@ -294,6 +320,18 @@ export function Dashboard({
           </div>
         </section>
 
+        {/* Préstamos */}
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">Préstamos</h2>
+          <div className="grid grid-cols-3 gap-3">
+            <QuickAction
+              icon={<HandCoins className="h-5 w-5" />}
+              label="Préstamo"
+              onClick={() => setDialog({ kind: "prestamo" })}
+            />
+          </div>
+        </section>
+
         {/* Almuerzos */}
         {usuario.almuerzos_activos && (
           <section className="rounded-2xl border border-border bg-card p-4">
@@ -315,6 +353,9 @@ export function Dashboard({
             />
           </section>
         )}
+
+        {/* Préstamos activos */}
+        <PrestamosSection prestamos={prestamos} />
 
         {/* Movimientos */}
         <section className="rounded-2xl border border-border bg-card p-4">
@@ -356,6 +397,13 @@ export function Dashboard({
               ))}
               {gastos.map((g) => {
                 const cat = CATEGORIAS[g.categoria]
+                const esTransporte = g.categoria.startsWith("transporte_")
+                const vehiculoLabel = esTransporte && usuario.tipo_vehiculo
+                  ? usuario.tipo_vehiculo === "carro" ? "Carro" : "Moto"
+                  : null
+                const gastoLabel = esTransporte
+                  ? (g.subcategoria ? g.subcategoria.charAt(0).toUpperCase() + g.subcategoria.slice(1) : cat?.label ?? g.categoria)
+                  : (cat?.label ?? g.categoria)
                 return (
                   <li key={g.id} className="flex items-center gap-3 py-2.5">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -363,16 +411,21 @@ export function Dashboard({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">
-                        {cat?.label ?? g.categoria}
-                        {g.subcategoria ? <span className="text-muted-foreground"> · {g.subcategoria}</span> : null}
+                        {vehiculoLabel ? (
+                          <>{vehiculoLabel} · <span className="text-muted-foreground">{gastoLabel}</span></>
+                        ) : (
+                          gastoLabel
+                        )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {formatFecha(g.fecha)}
                         {g.metodo_pago_id ? ` · ${metodoNombre[g.metodo_pago_id] ?? ""}` : ""}
                         {g.pagado_con_ahorros ? " · Ahorros" : ""}
                         {g.es_diferido ? ` · ${g.numero_cuotas} cuotas` : ""}
-                        {g.descripcion ? ` · ${g.descripcion}` : ""}
                       </p>
+                      {g.descripcion && (
+                        <p className="truncate text-xs text-muted-foreground">{g.descripcion}</p>
+                      )}
                     </div>
                     <span className="shrink-0 text-sm font-semibold text-foreground">{formatCOP(Number(g.monto))}</span>
                     <button
@@ -421,6 +474,9 @@ export function Dashboard({
       {dialog?.kind === "ingreso" && (
         <IngresoDialog open onOpenChange={(o) => !o && setDialog(null)} />
       )}
+      {dialog?.kind === "prestamo" && (
+        <PrestamoDialog open onOpenChange={(o) => !o && setDialog(null)} />
+      )}
     </main>
   )
 }
@@ -450,6 +506,9 @@ function CategoriaIcon({ categoria }: { categoria: string }) {
     transporte_mantenimiento: <Fuel className="h-4 w-4" />,
     salidas_disfrutar: <PartyPopper className="h-4 w-4" />,
     mascotas: <PawPrint className="h-4 w-4" />,
+    servicio_agua: <Droplets className="h-4 w-4" />,
+    servicio_luz: <Zap className="h-4 w-4" />,
+    otro: <MoreHorizontal className="h-4 w-4" />,
   }
   return <>{map[categoria] ?? <Wallet className="h-4 w-4" />}</>
 }

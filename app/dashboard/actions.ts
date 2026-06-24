@@ -235,3 +235,64 @@ export async function cerrarSesion() {
   await supabase.auth.signOut()
   revalidatePath("/", "layout")
 }
+
+// Registrar un préstamo (dinero prestado o deuda)
+export async function registrarPrestamo(input: {
+  persona: string
+  monto: number
+  tipo: "prestado" | "deuda"
+  tasa_interes?: number
+  fecha_prestamo?: string
+  fecha_pago?: string | null
+  notas?: string | null
+}) {
+  const { supabase, userId } = await getUserId()
+  if (!userId) return { error: "No autenticado" }
+
+  if (input.monto <= 0) return { error: "El monto debe ser mayor a 0" }
+  if (!input.persona.trim()) return { error: "Ingresa el nombre de la persona" }
+
+  const { error } = await supabase.from("prestamos").insert({
+    user_id: userId,
+    persona: input.persona.trim(),
+    monto: input.monto,
+    tipo: input.tipo,
+    tasa_interes: input.tasa_interes ?? 0,
+    fecha_prestamo: input.fecha_prestamo ?? new Date().toISOString().slice(0, 10),
+    fecha_pago: input.fecha_pago ?? null,
+    pagado: false,
+    notas: input.notas ?? null,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
+// Marcar un préstamo como pagado
+export async function marcarPrestamoPagado(id: string) {
+  const { supabase, userId } = await getUserId()
+  if (!userId) return { error: "No autenticado" }
+
+  const { error } = await supabase
+    .from("prestamos")
+    .update({ pagado: true })
+    .eq("id", id)
+    .eq("user_id", userId)
+  if (error) return { error: error.message }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
+// Eliminar un préstamo
+export async function eliminarPrestamo(id: string) {
+  const { supabase, userId } = await getUserId()
+  if (!userId) return { error: "No autenticado" }
+
+  const { error } = await supabase.from("prestamos").delete().eq("id", id).eq("user_id", userId)
+  if (error) return { error: error.message }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}

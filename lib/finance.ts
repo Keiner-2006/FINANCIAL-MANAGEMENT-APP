@@ -1,4 +1,4 @@
-import type { TipoIngreso } from "./types"
+import type { TipoIngreso, Gasto, IngresoExtra, MetodoPago } from "./types"
 
 function toISO(d: Date): string {
   const y = d.getFullYear()
@@ -96,4 +96,104 @@ export function esFechaCierre(diaPago: number, ref = new Date()): boolean {
   const ultimoDiaMes = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate()
   const objetivo = Math.min(diaPago, ultimoDiaMes)
   return ref.getDate() >= objetivo
+}
+
+// Devuelve todos los periodos entre dos fechas.
+export function getPeriodosEnRango(inicio: Date, fin: Date, tipo: TipoIngreso): Periodo[] {
+  const periodos: Periodo[] = []
+  const cursor = new Date(inicio)
+  while (cursor <= fin) {
+    const p = getPeriodoActual(tipo, cursor)
+    if (!periodos.some((x) => x.inicioISO === p.inicioISO)) {
+      periodos.push(p)
+    }
+    cursor.setDate(cursor.getDate() + (tipo === "quincenal" ? 16 : 32))
+    cursor.setDate(1)
+  }
+  return periodos
+}
+
+// Agrupa gastos por categoría.
+export function agruparPorCategoria(
+  gastos: Gasto[],
+  categorias: Record<string, { label: string }>
+): { categoria: string; total: number; label: string }[] {
+  const map = new Map<string, number>()
+  gastos.forEach((g) => {
+    map.set(g.categoria, (map.get(g.categoria) ?? 0) + Number(g.monto))
+  })
+  return Array.from(map.entries())
+    .map(([cat, total]) => ({ categoria: cat, total, label: categorias[cat]?.label ?? cat }))
+    .sort((a, b) => b.total - a.total)
+}
+
+// Agrupa gastos por mes (YYYY-MM).
+export function agruparPorMes(gastos: Gasto[]): { mes: string; total: number }[] {
+  const map = new Map<string, number>()
+  gastos.forEach((g) => {
+    const mes = g.fecha.slice(0, 7)
+    map.set(mes, (map.get(mes) ?? 0) + Number(g.monto))
+  })
+  return Array.from(map.entries())
+    .map(([mes, total]) => ({ mes, total }))
+    .sort((a, b) => a.mes.localeCompare(b.mes))
+}
+
+// Agrupa gastos por método de pago.
+export function agruparPorMetodoPago(
+  gastos: Gasto[],
+  metodos: MetodoPago[]
+): { metodo: string; total: number }[] {
+  const metodoMap = new Map<string, string>()
+  metodos.forEach((m) => metodoMap.set(m.id, m.nombre))
+  const map = new Map<string, number>()
+  gastos.forEach((g) => {
+    const key = g.metodo_pago_id ?? "sin Metodo"
+    map.set(key, (map.get(key) ?? 0) + Number(g.monto))
+  })
+  return Array.from(map.entries())
+    .map(([key, total]) => ({
+      metodo: metodoMap.get(key) ?? (key === "sin Metodo" ? "Sin método" : "Otro"),
+      total,
+    }))
+    .sort((a, b) => b.total - a.total)
+}
+
+// Totales diarios para heatmap.
+export function gastosPorDia(gastos: Gasto[]): Record<string, number> {
+  const map: Record<string, number> = {}
+  gastos.forEach((g) => {
+    map[g.fecha] = (map[g.fecha] ?? 0) + Number(g.monto)
+  })
+  return map
+}
+
+// Flujo de caja: balance acumulado diario.
+export function flujoDeCaja(
+  gastos: Gasto[],
+  ingresos: IngresoExtra[],
+  periodo: { inicioISO: string; finISO: string }
+): { fecha: string; gastos: number; ingresos: number; balance: number }[] {
+  const gastosMap = new Map<string, number>()
+  const ingresosMap = new Map<string, number>()
+  gastos.forEach((g) => {
+    gastosMap.set(g.fecha, (gastosMap.get(g.fecha) ?? 0) + Number(g.monto))
+  })
+  ingresos.forEach((i) => {
+    ingresosMap.set(i.fecha, (ingresosMap.get(i.fecha) ?? 0) + Number(i.monto))
+  })
+
+  const result: { fecha: string; gastos: number; ingresos: number; balance: number }[] = []
+  let acum = 0
+  const cursor = new Date(periodo.inicioISO + "T00:00:00")
+  const fin = new Date(periodo.finISO + "T00:00:00")
+  while (cursor <= fin) {
+    const fecha = toISO(cursor)
+    const g = gastosMap[fecha] ?? 0
+    const i = ingresosMap[fecha] ?? 0
+    acum += i - g
+    result.push({ fecha, gastos: g, ingresos: i, balance: acum })
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return result
 }
