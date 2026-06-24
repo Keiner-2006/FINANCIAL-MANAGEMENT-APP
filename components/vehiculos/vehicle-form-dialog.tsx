@@ -26,7 +26,8 @@ interface Props {
 export function VehicleFormDialog({ open, onOpenChange, vehiculo }: Props) {
   const router = useRouter()
   const [placa, setPlaca] = useState(vehiculo?.placa ?? "")
-  const [tipo, setTipo] = useState<"moto" | "carro">(vehiculo?.tipo ?? "moto")
+  const initialTipo = vehiculo?.tipo === "moto" || vehiculo?.tipo === "carro" ? vehiculo.tipo : "moto"
+  const [tipo, setTipo] = useState<"moto" | "carro">(initialTipo)
   const [activo, setActivo] = useState(vehiculo?.activo ?? true)
   const [loading, setLoading] = useState(false)
 

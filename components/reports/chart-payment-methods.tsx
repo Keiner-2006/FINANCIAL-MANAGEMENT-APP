@@ -19,7 +19,7 @@ export function ChartPaymentMethods({ data }: Props) {
         <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
         <YAxis type="category" dataKey="metodo" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" width={100} />
         <Tooltip
-          formatter={(value: number) => formatCOP(value)}
+          formatter={(value: unknown) => formatCOP(Number(value))}
           contentStyle={{
             borderRadius: "12px",
             border: "1px solid var(--border)",

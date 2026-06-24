@@ -43,7 +43,7 @@ export function ChartPie({ data }: Props) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number) => formatCOP(value)}
+          formatter={(value: unknown) => formatCOP(Number(value))}
           contentStyle={{
             borderRadius: "12px",
             border: "1px solid var(--border)",

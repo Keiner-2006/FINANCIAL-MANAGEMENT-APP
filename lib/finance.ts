@@ -189,8 +189,8 @@ export function flujoDeCaja(
   const fin = new Date(periodo.finISO + "T00:00:00")
   while (cursor <= fin) {
     const fecha = toISO(cursor)
-    const g = gastosMap[fecha] ?? 0
-    const i = ingresosMap[fecha] ?? 0
+    const g = gastosMap.get(fecha) ?? 0
+    const i = ingresosMap.get(fecha) ?? 0
     acum += i - g
     result.push({ fecha, gastos: g, ingresos: i, balance: acum })
     cursor.setDate(cursor.getDate() + 1)

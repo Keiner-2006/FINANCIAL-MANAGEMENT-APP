@@ -28,7 +28,7 @@ export function ChartCashflow({ data }: Props) {
         <XAxis dataKey="dia" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" interval={Math.floor(formatted.length / 6)} />
         <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
         <Tooltip
-          formatter={(value: number) => formatCOP(value)}
+          formatter={(value: unknown) => formatCOP(Number(value))}
           contentStyle={{
             borderRadius: "12px",
             border: "1px solid var(--border)",

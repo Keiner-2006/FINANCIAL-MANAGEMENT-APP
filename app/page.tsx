@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { LandingPage } from "@/components/landing/landing-page"
 
 export default async function Home() {
   const supabase = await createClient()
@@ -8,19 +7,19 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (user) {
-    const { data: usuario } = await supabase
-      .from("usuarios")
-      .select("onboarding_completo")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    if (!usuario?.onboarding_completo) {
-      redirect("/onboarding")
-    }
-
-    redirect("/dashboard")
+  if (!user) {
+    redirect("/auth/login")
   }
 
-  return <LandingPage />
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("onboarding_completo")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (!usuario?.onboarding_completo) {
+    redirect("/onboarding")
+  }
+
+  redirect("/dashboard")
 }

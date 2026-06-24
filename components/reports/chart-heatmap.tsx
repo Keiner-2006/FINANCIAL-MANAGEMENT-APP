@@ -33,11 +33,11 @@ export function ChartHeatmap({ data }: Props) {
       const weekDays: { date: string; value: number }[] = []
       let weekLabel = ""
       for (let i = 0; i < 7; i++) {
-        const fecha = cursor.toISOString().slice(0, 10)
+        const date = cursor.toISOString().slice(0, 10)
         if (i === 0) {
           weekLabel = cursor.toLocaleDateString("es-CO", { month: "short" })
         }
-        weekDays.push({ fecha, value: data[fecha] ?? 0 })
+        weekDays.push({ date, value: data[date] ?? 0 })
         cursor.setDate(cursor.getDate() + 1)
       }
       weeks.push({ label: weekLabel, days: weekDays })
@@ -76,7 +76,7 @@ export function ChartHeatmap({ data }: Props) {
               <div
                 key={di}
                 className={cn("h-3.5 w-3.5 rounded-sm", getIntensity(day.value))}
-                title={`${day.fecha}: ${formatCOP(day.value)}`}
+                title={`${day.date}: ${formatCOP(day.value)}`}
               />
             ))}
           </div>
