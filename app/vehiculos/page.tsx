@@ -29,23 +29,28 @@ export default async function VehiculosPage() {
         .select("*")
         .eq("user_id", user.id)
         .eq("tipo", usuario.tipo_vehiculo)
-        .limit(1)
-        .maybeSingle()
+          .order("activo", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (existente) {
-        if (!existente.activo) {
-          await supabase
-            .from("vehiculos")
-            .update({ activo: true })
-            .eq("id", existente.id)
-        }
-        vehiculos = [existente as Vehiculo]
-      } else {
-        const { data: nuevoVehiculo } = await supabase
-          .from("vehiculos")
-          .insert({
-            user_id: user.id,
-            nombre: usuario.tipo_vehiculo === "moto" ? "Mi moto" : "Mi carro",
+        if (existente) {
+          if (!existente.activo) {
+            const { data: vehiculoActivado, error: errActivar } = await supabase
+              .from("vehiculos")
+              .update({ activo: true })
+              .eq("id", existente.id)
+              .select("*")
+              .single()
+
+            if (!errActivar && vehiculoActivado) {
+              vehiculos = [vehiculoActivado as Vehiculo]
+            } else {
+              vehiculos = [existente as Vehiculo]
+            }
+          } else {
+            vehiculos = [existente as Vehiculo]
+          }
             tipo: usuario.tipo_vehiculo,
           })
           .select("*")

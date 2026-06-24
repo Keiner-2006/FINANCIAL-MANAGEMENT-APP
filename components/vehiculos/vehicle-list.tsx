@@ -63,7 +63,7 @@ export function VehicleList({ vehiculos, documentos }: Props) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{v.nombre}</p>
                   <p className="text-xs text-muted-foreground">
-                    {v.placa ? `${v.placa}` : ""}
+                    {v.placa ? `${v.placa}` : v.tipo === "moto" ? "Moto" : "Carro"}
                     {v.modelo ? ` · ${v.modelo}` : ""}
                     {v.anio ? ` · ${v.anio}` : ""}
                   </p>

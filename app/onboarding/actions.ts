@@ -103,7 +103,15 @@ export async function guardarOnboarding(payload: OnboardingPayload) {
 
     let vehiculoId = existingVehiculo?.id
 
-    if (!vehiculoId) {
+    if (vehiculoId) {
+      if (payload.placa_vehiculo?.trim()) {
+        await supabase
+          .from("vehiculos")
+          .update({ placa: payload.placa_vehiculo.trim() })
+          .eq("id", vehiculoId)
+          .eq("user_id", user.id)
+      }
+    } else {
       const { data: nuevoVehiculo, error: errVehiculo } = await supabase
         .from("vehiculos")
         .insert({
